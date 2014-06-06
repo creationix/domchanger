@@ -1,9 +1,7 @@
-var render = require('./render');
+var changer = require('./changer');
 var FilterableProductTable = require('./filterable-product-table');
 var PRODUCTS = require('./products');
 
-var dom = render([FilterableProductTable, {
-  products: PRODUCTS
-}]);
+var dom = changer([FilterableProductTable, PRODUCTS]);
 
 console.log(dom);

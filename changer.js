@@ -1,7 +1,61 @@
 "use strict";
-module.exports = render;
+module.exports = create;
 
-function render(tree) {
+function create(tree) {
+  if (!tree) return;
+  console.log(tree)
+  if (typeof tree === "string") {
+    return { text: tree};
+  }
+
+  if (!Array.isArray(tree)) throw new TypeError("Tree must be array");
+  if (!tree.length) return;
+  var first = tree[0];
+  var component;
+  if (typeof first === "function") {
+    component = first;
+  }
+  else if (typeof first === "string") {
+    var i = 1;
+    var tag = { tag: first };
+    if (tree[i] && tree[i].constructor === Object) {
+      tag.props = tree[i];
+      i++;
+    }
+    tag.children = tree.slice(i).map(create).filter(Boolean);
+    return tag;
+  }
+  else if (Array.isArray(first)) {
+    throw "recurse?"
+  }
+  else if (first.constructor === Object) {
+    throw "named children?";
+  }
+  else {
+    throw new TypeError("First item must be string or function");
+  }
+  var refs = {};
+  var functions = component(emit, refresh, refs);
+  var body = create(functions.render.apply(null, tree.slice(1)));
+
+  return {
+    component: component,
+    refs: refs,
+    functions: functions,
+    body: body
+  };
+
+  function emit(name) {
+
+  }
+  function refresh() {
+
+  }
+
+
+}
+
+function renderer(tree) {
 
   // Render strings as text nodes
   if (typeof tree === 'string') return document.createTextNode(tree);
@@ -15,6 +69,11 @@ function render(tree) {
   // Empty arrays are just empty fragments.
   if (!tree.length) return document.createDocumentFragment();
 
+  var first = tree[0];
+  if (typeof first === "string") {
+
+  }
+  if (typeof tree)
   var node, first;
   for (var i = 0, l = tree.length; i < l; i++) {
     var part = tree[i];
@@ -32,7 +91,7 @@ function render(tree) {
         if (id) node.setAttribute('id', id[0].substr(1));
         continue;
       } else if (typeof part === 'function') {
-        return render(part.apply(null, tree.slice(i + 1)));
+        return renderer(part.apply(null, tree.slice(i + 1)));
       }
       else {
         node = document.createDocumentFragment();
@@ -43,7 +102,7 @@ function render(tree) {
     if (first && typeof part === 'object' && part.constructor === Object) {
       setAttrs(node, part);
     } else {
-      node.appendChild(render(part));
+      node.appendChild(renderer(part));
     }
     first = false;
   }
@@ -75,10 +134,14 @@ function setStyle(style, attrs) {
   }
 }
 
-var CLASS_MATCH = /\.[^.#$]+/g,
-    ID_MATCH = /#[^.#$]+/,
-    TAG_MATCH = /^[^.#$]+/;
-
 function stripFirst(part) {
   return part.substr(1);
 }
+
+/////////////
+
+var FilterableProductTable = require('./filterable-product-table');
+var PRODUCTS = require('./products');
+
+var parent = create([FilterableProductTable, PRODUCTS]);
+console.log("parent", parent);
