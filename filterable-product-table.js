@@ -1,10 +1,10 @@
 module.exports = FilterableProductTable;
 
-function FilterableProductTable() {
+function FilterableProductTable(props) {
   return ["div",
     [SearchBar],
     [ProductTable, {
-      products: this.products
+      products: props.products
     }]
   ];
 }
@@ -23,10 +23,10 @@ function SearchBar() {
   ];
 }
 
-function ProductTable() {
+function ProductTable(props) {
   var rows = [];
   var lastCategory = null;
-  this.products.forEach(function(product) {
+  props.products.forEach(function(product) {
     if (product.category !== lastCategory) {
       rows.push([ProductCategoryRow, {
         category: product.category,
@@ -51,20 +51,20 @@ function ProductTable() {
   ];
 }
 
-function ProductCategoryRow() {
+function ProductCategoryRow(props) {
   return ["tr",
-    ["th", {colspan:2}, this.category]
+    ["th", {colspan:2}, props.category]
   ];
 }
 
-function ProductRow() {
-  var name = this.product.stocked ?
-    this.product.name :
+function ProductRow(props) {
+  var name = props.product.stocked ?
+    props.product.name :
     ["span", {style: {color: "red"}},
-      this.product.name
+      props.product.name
     ];
   return ["tr",
     ["td", name],
-    ["td", this.product.price]
+    ["td", props.product.price]
   ];
 }

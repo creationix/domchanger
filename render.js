@@ -32,7 +32,7 @@ function render(tree) {
         if (id) node.setAttribute('id', id[0].substr(1));
         continue;
       } else if (typeof part === 'function') {
-        return render(part.call(tree[++i]));
+        return render(part.apply(null, tree.slice(i + 1)));
       }
       else {
         node = document.createDocumentFragment();
