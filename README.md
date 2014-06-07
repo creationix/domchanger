@@ -106,6 +106,6 @@ function TodoList() {
 
 ## Live Example
 
-You can play around with a larger example in this [fiddle](http://jsfiddle.net/BsUDE/1/).
+You can play around with a larger example in this [fiddle](http://jsfiddle.net/BsUDE/3/).
 
-<iframe src="http://jsfiddle.net/BsUDE/1/embedded/js,result/"></iframe>
+<iframe src="http://jsfiddle.net/BsUDE/3/embedded/js,result/"></iframe>
