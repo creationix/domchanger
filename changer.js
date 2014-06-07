@@ -1,39 +1,182 @@
 "use strict";
 module.exports = create;
 
+var CLASS_MATCH = /\.[^.#$]+/g,
+    ID_MATCH = /#[^.#$]+/,
+    REF_MATCH = /\$[^.#$]+/,
+    TAG_MATCH = /^[^.#$]+/;
+
+var slice = [].slice;
+function noop() {}
+
+function createComponent(component, parent, owner) {
+  var refs = {};
+  var data = [];
+  console.log("new " + component.name);
+  var out = component(emit, refresh, refs);
+  var render = out.render;
+  var on = out.on || {};
+  var cleanup = out.cleanup || noop;
+  var instance = {
+    update: update,
+    cleanup: cleanup,
+    handleEvent: handleEvent
+  };
+
+  var nodes = {};
+
+  return instance;
+
+  function refresh() {
+    var tree = render.apply(null, data);
+    apply("", tree);
+  }
+
+  function apply(path, tree) {
+    var top = path ? nodes[path.substring(0, path.lastIndexOf("."))] : parent;
+    var node = nodes[path];
+    if (!node) {
+      // Node is new, let's create it!
+      if (typeof tree === "string") {
+        node = nodes[path] = document.createTextNode(tree);
+        top.appendChild(node);
+        return;
+      }
+      if (Array.isArray(tree)) {
+        if (!tree.length) return;
+        var first = tree[0];
+        if (typeof first === "function") {
+          var child = createComponent(first, top, instance);
+          child.update.apply(null, tree.slice(1));
+          node = nodes[path] = child;
+          return;
+        }
+        if (typeof first === "string") {
+          var tag = processTag(tree);
+          node = nodes[path] = document.createElement(tag.name);
+          setAttrs(node, tag.props);
+          applyChildren(path, tag.body);
+          top.appendChild(node);
+          return;
+        }
+        node = nodes[path] = document.createDocumentFragment();
+        applyChildren(path, tree);
+        top.appendChild(node);
+        return;
+      }
+      console.error(tree);
+      throw new Error("Invalid type");
+    }
+    throw "TODO: Update " + component.name + " " + path;
+  }
+
+  function applyChildren(path, array) {
+    array.forEach(function (child, i) {
+      var newPath = path ? path + "." + i : "" + i;
+      apply(newPath, child);
+    });
+  }
+
+  function update() {
+    data = slice.call(arguments);
+    refresh();
+  }
+
+  function emit() {
+    if (!owner) throw new Error("Can't emit events from top-level component");
+    owner.handleEvent.apply(null, arguments);
+  }
+
+  function handleEvent(name) {
+    var handler = on[name];
+    if (!handler) {
+      if (owner) return owner.handleEvent.apply(null, arguments);
+      throw new Error("Missing event handler for " + name);
+    }
+    handler.apply(null, slice.call(arguments, 1));
+  }
+
+}
+
+function processTag(array) {
+  var props, body;
+  if (array[1].constructor === Object) {
+    props = array[1];
+    body = array.slice(2);
+  }
+  else {
+    props = {};
+    body = array.slice(1);
+  }
+  var string = array[0];
+  var name = string.match(TAG_MATCH);
+  var tag = {
+    name: name ? name[0] : "div",
+    props: props,
+    body: body
+  };
+  var classes = string.match(CLASS_MATCH);
+  if (classes) {
+    classes = classes.map(stripFirst).join(" ");
+    if (props.class) props.class += " " + classes;
+    else props.class = classes;
+  }
+  var id = string.match(ID_MATCH);
+  if (id) {
+    props.id = stripFirst(id[0]);
+  }
+  var ref = string.match(REF_MATCH);
+  if (ref) {
+    tag.ref = stripFirst(ref[0]);
+  }
+  return tag;
+}
+
+
 function create(tree) {
   if (!tree) return;
-  console.log(tree)
   if (typeof tree === "string") {
-    return { text: tree};
+    return tree;
   }
 
   if (!Array.isArray(tree)) throw new TypeError("Tree must be array");
   if (!tree.length) return;
-  var first = tree[0];
-  var component;
-  if (typeof first === "function") {
-    component = first;
-  }
-  else if (typeof first === "string") {
-    var i = 1;
-    var tag = { tag: first };
-    if (tree[i] && tree[i].constructor === Object) {
-      tag.props = tree[i];
-      i++;
+  var i = 0;
+  var first = tree[i];
+  if (typeof first === "string") {
+    i++;
+    var props = tree[i] && tree[i].constructor === Object ?
+      tree[i++] : {};
+    var tag = first.match(TAG_MATCH);
+    tag = tag ? tag[0] : "div";
+    var classes = first.match(CLASS_MATCH);
+    if (classes) {
+      classes = classes.map(stripFirst).join(" ");
+      if (props.class) {
+        props.class += " " + classes;
+      }
+      else props.class = classes;
     }
-    tag.children = tree.slice(i).map(create).filter(Boolean);
-    return tag;
+    var id = first.match(ID_MATCH);
+    if (id) props.id = stripFirst(id[0]);
+    var obj = { tag: tag };
+    var children = tree.slice(i).map(create).filter(Boolean);
+    // Only add props if there is at least one key.
+    for (var key in props) {
+      obj.props = props;
+      break;
+    }
+    if (children.length) obj.children = children;
+    var ref = first.match(REF_MATCH);
+    if (ref) obj.ref = stripFirst(ref[0]);
+    return obj;
   }
-  else if (Array.isArray(first)) {
-    throw "recurse?"
+  if (Array.isArray(tree[i])) {
+    return tree.map(create);
   }
-  else if (first.constructor === Object) {
-    throw "named children?";
-  }
-  else {
-    throw new TypeError("First item must be string or function");
-  }
+  if (typeof tree[i] !== "function") throw new TypeError("Unexpected value");
+  var component = tree[i++];
+
   var refs = {};
   var functions = component(emit, refresh, refs);
   var body = create(functions.render.apply(null, tree.slice(1)));
@@ -54,6 +197,11 @@ function create(tree) {
 
 
 }
+
+function stripFirst(part) {
+  return part.substring(1);
+}
+
 
 function renderer(tree) {
 
@@ -134,14 +282,12 @@ function setStyle(style, attrs) {
   }
 }
 
-function stripFirst(part) {
-  return part.substr(1);
-}
 
 /////////////
 
 var FilterableProductTable = require('./filterable-product-table');
 var PRODUCTS = require('./products');
-
-var parent = create([FilterableProductTable, PRODUCTS]);
-console.log("parent", parent);
+var parentNode = document.createElement('div');
+var instance = createComponent(FilterableProductTable, parentNode);
+instance.update(PRODUCTS);
+console.log(parentNode);

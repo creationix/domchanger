@@ -63,7 +63,7 @@ function SearchBar(emit, refresh, refs) {
 function ProductTable() {
   return { render: render };
   function render(products, filterText, inStockOnly) {
-    var rows = {};
+    var rows = [];
     var lastCategory = null;
     products.forEach(function(product) {
       if (product.name.indexOf(filterText) === -1 ||
@@ -71,9 +71,11 @@ function ProductTable() {
         return;
       }
       if (product.category !== lastCategory) {
-        rows[product.category] = [ProductCategoryRow, product.category];
+        // TODO: key as product.category
+        rows.push([ProductCategoryRow, product.category]);
       }
-      rows[product.name] = [ProductRow, product];
+      // TODO key as product.name
+      rows.push([ProductRow, product]);
 
       lastCategory = product.category;
     });
@@ -85,7 +87,7 @@ function ProductTable() {
           ["th", "Price"]
         ]
       ],
-      ["tbody", null, rows]
+      ["tbody", rows]
     ];
   }
 }
