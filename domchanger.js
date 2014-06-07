@@ -165,6 +165,9 @@ function nameNodes(raw) {
 
     // Figure out what type of item this is and normalize data a bit.
     var type, first, tag;
+    if (typeof item === "number") {
+      item = String(item);
+    }
     if (typeof item === "string") {
       type = "text";
     }
@@ -271,18 +274,30 @@ function processTag(array) {
 function updateAttrs(node, attrs, old) {
   if (old) Object.keys(old).forEach(function (key) {
     if (attrs && attrs[key]) return;
-    node.removeAttribute(key);
+    if (key.substr(0, 2) === "on") {
+      node.removeEventListener(key.substr(2), old[key], false);
+    }
+    else {
+      node.removeAttribute(key);
+    }
   });
   if (attrs) Object.keys(attrs).forEach(function (key) {
     var value = attrs[key];
-    if (old && old[key] === value) return;
+    console.log([key, value])
     if (key === "style" && value.constructor === Object) {
       updateStyle(node.style, value, old && old.style);
-    } else if (key.substr(0, 2) === "on") {
+    }
+    else if (old && (old[key] === value)) {
+      console.log("same", key);
+      return;
+    }
+    else if (key.substr(0, 2) === "on") {
       node.addEventListener(key.substr(2), value, false);
-    } else if (typeof value === "boolean") {
+    }
+    else if (typeof value === "boolean") {
       if (value) node.setAttribute(key, key);
-    } else {
+    }
+    else {
       node.setAttribute(key, value);
     }
   });

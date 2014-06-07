@@ -38,7 +38,7 @@ function SearchBar(emit, refresh, refs) {
       ["input$filterText", {
         type: "text",
         placeholder: "Search...",
-        onchange: handleChange,
+        onkeyup: handleChange,
         value: filterText
       }],
       ["p",
