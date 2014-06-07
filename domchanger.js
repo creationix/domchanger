@@ -1,13 +1,9 @@
+( // Module boilerplate to support component, browser globals and AMD.
+  (typeof module === "object" && typeof module.exports === "object" && function (m) { module.exports = m(); }) ||
+  (typeof define === "function" && function (m) { define("domchanger", m); }) ||
+  (function (m) { window.domChanger = m(); })
+)(function () {
 "use strict";
-module.exports = createComponent;
-
-var CLASS_MATCH = /\.[^.#$]+/g,
-    ID_MATCH = /#[^.#$]+/,
-    REF_MATCH = /\$[^.#$]+/,
-    TAG_MATCH = /^[^.#$]+/;
-
-var slice = [].slice;
-function noop() {}
 
 function createComponent(component, parent, owner) {
   var refs = {};
@@ -312,18 +308,14 @@ function isEmpty(obj) {
   return !Object.keys(obj).length;
 }
 
-/////////////
+var CLASS_MATCH = /\.[^.#$]+/g,
+    ID_MATCH = /#[^.#$]+/,
+    REF_MATCH = /\$[^.#$]+/,
+    TAG_MATCH = /^[^.#$]+/;
 
-var dialog = require('ui/dialog');
+var slice = [].slice;
+function noop() {}
 
-var FilterableProductTable = require('./filterable-product-table');
-var PRODUCTS = require('./products');
-var $ = dialog("Program", ["$parent"], onClose);
+return createComponent;
 
-var instance = createComponent(FilterableProductTable, $.parent);
-instance.update(PRODUCTS);
-console.log($.parent);
-function onClose() {
-  $.close();
-  instance.destroy();
-}
+});
