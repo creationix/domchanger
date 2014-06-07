@@ -1,5 +1,5 @@
 "use strict";
-module.exports = create;
+module.exports = createComponent;
 
 var CLASS_MATCH = /\.[^.#$]+/g,
     ID_MATCH = /#[^.#$]+/,
@@ -154,129 +154,8 @@ function processTag(array) {
   return tag;
 }
 
-
-function create(tree) {
-  if (!tree) return;
-  if (typeof tree === "string") {
-    return tree;
-  }
-
-  if (!Array.isArray(tree)) throw new TypeError("Tree must be array");
-  if (!tree.length) return;
-  var i = 0;
-  var first = tree[i];
-  if (typeof first === "string") {
-    i++;
-    var props = tree[i] && tree[i].constructor === Object ?
-      tree[i++] : {};
-    var tag = first.match(TAG_MATCH);
-    tag = tag ? tag[0] : "div";
-    var classes = first.match(CLASS_MATCH);
-    if (classes) {
-      classes = classes.map(stripFirst).join(" ");
-      if (props.class) {
-        props.class += " " + classes;
-      }
-      else props.class = classes;
-    }
-    var id = first.match(ID_MATCH);
-    if (id) props.id = stripFirst(id[0]);
-    var obj = { tag: tag };
-    var children = tree.slice(i).map(create).filter(Boolean);
-    // Only add props if there is at least one key.
-    for (var key in props) {
-      obj.props = props;
-      break;
-    }
-    if (children.length) obj.children = children;
-    var ref = first.match(REF_MATCH);
-    if (ref) obj.ref = stripFirst(ref[0]);
-    return obj;
-  }
-  if (Array.isArray(tree[i])) {
-    return tree.map(create);
-  }
-  if (typeof tree[i] !== "function") throw new TypeError("Unexpected value");
-  var component = tree[i++];
-
-  var refs = {};
-  var functions = component(emit, refresh, refs);
-  var body = create(functions.render.apply(null, tree.slice(1)));
-
-  return {
-    component: component,
-    refs: refs,
-    functions: functions,
-    body: body
-  };
-
-  function emit(name) {
-
-  }
-  function refresh() {
-
-  }
-
-
-}
-
 function stripFirst(part) {
   return part.substring(1);
-}
-
-
-function renderer(tree) {
-
-  // Render strings as text nodes
-  if (typeof tree === 'string') return document.createTextNode(tree);
-
-  // Pass through html elements and text nodes as-is
-  if (tree instanceof HTMLElement || tree instanceof window.Text) return tree;
-
-  // Stringify any other non-array types
-  if (!Array.isArray(tree)) return document.createTextNode(tree + "");
-
-  // Empty arrays are just empty fragments.
-  if (!tree.length) return document.createDocumentFragment();
-
-  var first = tree[0];
-  if (typeof first === "string") {
-
-  }
-  if (typeof tree)
-  var node, first;
-  for (var i = 0, l = tree.length; i < l; i++) {
-    var part = tree[i];
-
-    if (!node) {
-      if (typeof part === 'string') {
-        // Create a new dom node by parsing the tagline
-        var tag = part.match(TAG_MATCH);
-        tag = tag ? tag[0] : "div";
-        node = document.createElement(tag);
-        first = true;
-        var classes = part.match(CLASS_MATCH);
-        if (classes) node.setAttribute('class', classes.map(stripFirst).join(' '));
-        var id = part.match(ID_MATCH);
-        if (id) node.setAttribute('id', id[0].substr(1));
-        continue;
-      } else if (typeof part === 'function') {
-        return renderer(part.apply(null, tree.slice(i + 1)));
-      }
-      else {
-        node = document.createDocumentFragment();
-      }
-    }
-
-    // Except the first item if it's an attribute object
-    if (first && typeof part === 'object' && part.constructor === Object) {
-      setAttrs(node, part);
-    } else {
-      node.appendChild(renderer(part));
-    }
-    first = false;
-  }
-  return node;
 }
 
 function setAttrs(node, attrs) {
@@ -303,7 +182,6 @@ function setStyle(style, attrs) {
     style[key] = attrs[key];
   }
 }
-
 
 /////////////
 
