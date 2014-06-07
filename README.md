@@ -102,3 +102,10 @@ function TodoList() {
   }
 }
 ```
+
+
+## Live Example
+
+You can play around with a larger example in this [fiddle](http://jsfiddle.net/BsUDE/1/).
+
+<iframe src="http://jsfiddle.net/BsUDE/1/embedded/js,result/"></iframe>
