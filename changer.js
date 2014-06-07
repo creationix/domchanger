@@ -104,6 +104,7 @@ function createComponent(component, parent, owner) {
       }
       if (type === "element") {
         node = nodes[newPath] = document.createElement(tag.name);
+        if (tag.ref) refs[tag.ref] = node;
         setAttrs(node, tag.props);
         tag.body.forEach(function (child) {
           apply(newPath, child);
@@ -202,13 +203,16 @@ function setStyle(style, attrs) {
 
 /////////////
 
+var dialog = require('ui/dialog');
+
 var FilterableProductTable = require('./filterable-product-table');
 var PRODUCTS = require('./products');
-var parentNode = document.createElement('div');
-var instance = createComponent(FilterableProductTable, parentNode);
+var $ = dialog("Program", ["$parent"], onClose);
+
+var instance = createComponent(FilterableProductTable, $.parent);
 instance.update(PRODUCTS);
-console.log(parentNode);
-setTimeout(function () {
+console.log($.parent);
+function onClose() {
   instance.destroy();
-  console.log(parentNode);
-}, 3000);
+  $.close();
+}

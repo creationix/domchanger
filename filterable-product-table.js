@@ -19,8 +19,7 @@ function FilterableProductTable(emit, refresh) {
     on: { userInput: onUserInput }
   };
   function render(products) {
-    return [
-      // "div",
+    return ["div",
       [SearchBar, filterText, inStockOnly],
       [ProductTable, products, filterText, inStockOnly]
     ];
@@ -47,9 +46,8 @@ function SearchBar(emit, refresh, refs) {
           type: "checkbox",
           onchange: handleChange,
           checked: !!inStockOnly
-        },
-          "Only show products in stock"
-        ]
+        }],
+        "Only show products in stock"
       ]
     ];
   }
