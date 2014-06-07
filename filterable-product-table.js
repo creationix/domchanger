@@ -34,7 +34,7 @@ function FilterableProductTable(emit, refresh) {
 function SearchBar(emit, refresh, refs) {
   return { render: render };
   function render(filterText, inStockOnly) {
-    return ["form",
+    return ["form", { onsubmit: cancel },
       ["input$filterText", {
         type: "text",
         placeholder: "Search...",
@@ -50,6 +50,9 @@ function SearchBar(emit, refresh, refs) {
         "Only show products in stock"
       ]
     ];
+  }
+  function cancel(evt) {
+    evt.preventDefault();
   }
   function handleChange() {
     emit("userInput",

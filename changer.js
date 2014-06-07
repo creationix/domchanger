@@ -12,6 +12,7 @@ function noop() {}
 function createComponent(component, parent, owner) {
   var refs = {};
   var data = [];
+  var roots = {};
   console.log("new " + component.name);
   var out = component(emit, refresh, refs);
   var render = out.render;
@@ -20,117 +21,120 @@ function createComponent(component, parent, owner) {
   var instance = {
     update: update,
     destroy: destroy,
+    append: append,
     handleEvent: handleEvent
   };
 
-  var nodes = {};
-  var names;
+  // Add comment for this component.
   var comment = document.createComment(component.name);
   parent.appendChild(comment);
 
   return instance;
 
+  function append() {
+    comment.parentNode.appendChild(comment);
+    Object.keys(roots).forEach(function (key) {
+      var node = roots[key];
+      if (node.el) parent.appendChild(node.el);
+      else if (node.append) node.append();
+    });
+  }
+
   function destroy() {
+    console.log("destroy", component.name);
     comment.parentNode.removeChild(comment);
     comment = null;
-    Object.keys(nodes).forEach(function (key) {
-      var node = nodes[key];
-      if (node.destroy) node.destroy();
-      else node.el.parentNode.removeChild(node.el);
-      delete nodes[key];
-    });
+    cleanRoots(roots);
     delete instance.update;
     delete instance.destroy;
     delete instance.handleEvent;
     cleanup();
   }
 
-  function refresh() {
-    var tree = render.apply(null, data);
-    names = {};
-    apply("", tree);
+  function cleanRoots(roots) {
+    Object.keys(roots).forEach(function (key) {
+      var node = roots[key];
+      if (node.el) node.el.parentNode.removeChild(node.el);
+      else if (node.destroy) node.destroy();
+      delete roots[key];
+      if (node.children) cleanRoots(node.children);
+    });
   }
 
-  function apply(path, item) {
-    var type, first, tag;
-    if (typeof item === "string") {
-      type = "text";
-    }
-    else if (Array.isArray(item)) {
-      if (!item.length) return;
-      first = item[0];
-      if (typeof first === "function") {
-        type = "component";
+  function refresh() {
+    var tree = nameNodes(render.apply(null, data));
+    apply(parent, tree, roots);
+  }
+
+  function apply(top, newTree, oldTree) {
+
+    // Delete any items that don't exist in the new tree
+    Object.keys(oldTree).forEach(function (key) {
+      if (!newTree[key]) {
+        var item = oldTree[key];
+        if (item.destroy) item.destroy();
+        else item.el.parentNode.removeChild(item.el);
+        delete oldTree[key];
       }
-      else if (typeof first === "string") {
-        tag = processTag(item);
-        type = "element";
-      }
-      else {
-        item.forEach(function (child) {
-          apply(path, child);
-        });
+    });
+
+    Object.keys(newTree).forEach(function (key) {
+      var item = oldTree[key];
+      var newItem = newTree[key];
+
+      if (newItem.text) {
+        if (!item) {
+          item = oldTree[key] = {
+            text: newItem.text,
+            el: document.createTextNode(newItem.text)
+          };
+        }
+        else {
+          if (newItem.text !== item.text) {
+            item.text = newItem.text;
+            item.el.nodeValue = newItem.text;
+          }
+        }
+        // Move to bottom or append.
+        top.appendChild(item.el);
         return;
       }
-    }
-    else {
-      console.error(component.name, path, item);
-      throw new TypeError("Invalid data");
-    }
 
-    var i = 0;
-    var name = type === "element" ? (tag.ref || tag.name) :
-      type === "component" ? item.key || item[0].name : type;
-    var newPath;
-    while (names[newPath = path + "\0" + name + i++]);
-    names[newPath] = true;
-
-    var top = path ? nodes[path].el : parent;
-    var node = nodes[newPath];
-    if (type === "text") {
-      if (node) {
-        if (node.text !== item) {
-          node.el.nodeValue = item;
-          node.text = item;
+      if (newItem.component) {
+        if (!item) {
+          item = oldTree[key] = createComponent(newItem.component, top, instance);
         }
+        item.update.apply(null, newItem.data);
+        item.append();
+        return;
       }
-      else {
-        node = nodes[newPath] = {
-          el: document.createTextNode(item),
-          text: item
-        };
-        top.appendChild(node.el);
+
+      if (newItem.tagName) {
+        if (!item) {
+          item = oldTree[key] = {
+            tagName: newItem.tagName,
+            el: document.createElement(newItem.tagName),
+            children: {}
+          };
+          if (newItem.ref) {
+            item.ref = newItem.ref;
+            refs[item.ref] = item.el;
+          }
+        }
+        if (newItem.props !== item.props) {
+          updateAttrs(item.el, newItem.props, item.props);
+          item.props = newItem.props;
+        }
+        if (newItem.children) {
+          apply(item.el, newItem.children, item.children);
+        }
+        top.appendChild(item.el);
+        return;
       }
-    }
-    else if (type === "component") {
-      if (!node) {
-        node = createComponent(first, top, instance);
-        nodes[newPath] = node;
-      }
-      node.update.apply(null, item.slice(1));
-    }
-    else if (type === "element") {
-      if (!node) {
-        tag.el = document.createElement(tag.name);
-        node = nodes[newPath] = tag;
-        if (tag.ref) refs[tag.ref] = node.el;
-        updateAttrs(node.el, {}, tag.props);
-        top.appendChild(node.el);
-      }
-      else {
-        console.log(tag.props);
-        console.log(node.props);
-        // TODO: fast update
-        updateAttrs(node.el, node.props, tag.props);
-        node.props = tag.props;
-      }
-      tag.body.forEach(function (child) {
-        apply(newPath, child);
-      });
-    }
-    else {
-      throw "This shouldn't happen";
-    }
+
+      throw new Error("This shouldn't happen");
+
+    });
   }
 
   function update() {
@@ -154,6 +158,86 @@ function createComponent(component, parent, owner) {
 
 }
 
+
+// Given raw JSON-ML data, return a virtual DOM tree with auto-named nodes.
+function nameNodes(raw) {
+  var tree = {};
+  processItem(tree, raw);
+  return tree;
+
+  function processItem(nodes, item) {
+
+    // Figure out what type of item this is and normalize data a bit.
+    var type, first, tag;
+    if (typeof item === "string") {
+      type = "text";
+    }
+    else if (Array.isArray(item)) {
+      if (!item.length) return;
+      first = item[0];
+      if (typeof first === "function") {
+        type = "component";
+      }
+      else if (typeof first === "string") {
+        tag = processTag(item);
+        type = "element";
+      }
+      else {
+        item.forEach(function (child) {
+          processItem(nodes, child);
+        });
+        return;
+      }
+    }
+    else {
+      console.error(item);
+      throw new TypeError("Invalid item");
+    }
+
+    // Find a unique name for this local namespace.
+    var i = 0;
+    var name = type === "element" ? (tag.ref || tag.name) :
+      type === "component" ? item.key || item[0].name : type;
+    var newPath;
+    while (nodes[newPath = name + "-" + i++]);
+
+    var node;
+
+    if (type === "text") {
+      nodes[newPath] = {
+        text: item
+      };
+      return;
+    }
+
+    if (type === "element") {
+      var sub = {};
+      node = nodes[newPath] = {
+        tagName: tag.name,
+      };
+      if (!isEmpty(tag.props)) node.props = tag.props;
+      if (tag.ref) node.ref = tag.ref;
+      tag.body.forEach(function (child) {
+        processItem(sub, child);
+      });
+      if (!isEmpty(sub)) node.children = sub;
+      return;
+    }
+
+    if (type === "component") {
+      nodes[newPath] = {
+        component: item[0],
+        data: item.slice(1)
+      };
+      return;
+    }
+
+    throw new TypeError("Invalid type");
+  }
+
+}
+
+// Parse and process a JSON-ML element.
 function processTag(array) {
   var props, body;
   if (array[1].constructor === Object) {
@@ -188,19 +272,16 @@ function processTag(array) {
   return tag;
 }
 
-function stripFirst(part) {
-  return part.substring(1);
-}
-
-function updateAttrs(node, old, attrs) {
-  // Update any changed attributes.
-  var keys = Object.keys(attrs), key;
-  for (var i = 0, l = keys.length; i < l; i++) {
-    key = keys[i];
+function updateAttrs(node, attrs, old) {
+  if (old) Object.keys(old).forEach(function (key) {
+    if (attrs && attrs[key]) return;
+    node.removeAttribute(key);
+  });
+  if (attrs) Object.keys(attrs).forEach(function (key) {
     var value = attrs[key];
-    if (old[key] === value) continue;
+    if (old && old[key] === value) return;
     if (key === "style" && value.constructor === Object) {
-      updateStyle(node.style, old.style || {}, value);
+      updateStyle(node.style, value, old && old.style);
     } else if (key.substr(0, 2) === "on") {
       node.addEventListener(key.substr(2), value, false);
     } else if (typeof value === "boolean") {
@@ -208,30 +289,27 @@ function updateAttrs(node, old, attrs) {
     } else {
       node.setAttribute(key, value);
     }
-  }
-  // Remove attributes no longer in list
-  keys = Object.keys(old);
-  for (i = 0, l = keys.length; i < l; i++) {
-    key = keys[i];
-    if (attrs.hasOwnProperty(key)) continue;
-    node.removeAttribute(key);
-  }
+  });
 }
 
-function updateStyle(style, old, attrs) {
-  var keys = Object.keys(attrs), key;
-  for (var i = 0, l = keys.length; i < l; i++) {
-    key = keys[i];
-    var value = attrs[key];
-    if (old[key] === value) continue;
-    style[key] = attrs[key];
-  }
-  keys = Object.keys(old);
-  for (i = 0, l = keys.length; i < l; i++) {
-    key = keys[i];
-    if (attrs.hasOwnProperty(key)) continue;
+function updateStyle(style, attrs, old) {
+  if (old) Object.keys(old).forEach(function (key) {
+    if (attrs && attrs[key]) return;
     style[key] = "";
-  }
+  });
+  if (attrs) Object.keys(attrs).forEach(function (key) {
+    var value = attrs[key];
+    if (old && old[key] === value) return;
+    style[key] = attrs[key];
+  });
+}
+
+function stripFirst(part) {
+  return part.substring(1);
+}
+
+function isEmpty(obj) {
+  return !Object.keys(obj).length;
 }
 
 /////////////
@@ -246,6 +324,6 @@ var instance = createComponent(FilterableProductTable, $.parent);
 instance.update(PRODUCTS);
 console.log($.parent);
 function onClose() {
-  instance.destroy();
   $.close();
+  instance.destroy();
 }
