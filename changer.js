@@ -24,57 +24,79 @@ function createComponent(component, parent, owner) {
   };
 
   var nodes = {};
+  var names;
 
   return instance;
 
   function refresh() {
     var tree = render.apply(null, data);
+    names = {};
     apply("", tree);
   }
 
-  function apply(path, tree) {
-    var top = path ? nodes[path.substring(0, path.lastIndexOf("."))] : parent;
-    var node = nodes[path];
+  function apply(path, item) {
+    var type, first, tag;
+    if (typeof item === "string") {
+      type = "text";
+    }
+    else if (Array.isArray(item)) {
+      if (!item.length) return;
+      first = item[0];
+      if (typeof first === "function") {
+        type = "component";
+      }
+      else if (typeof first === "string") {
+        tag = processTag(item);
+        type = "element";
+      }
+      else {
+        item.forEach(function (child) {
+          apply(path, child);
+        });
+        return;
+      }
+    }
+    else {
+      console.error(component.name, path, item);
+      throw new TypeError("Invalid data");
+    }
+
+    var i = 0;
+    var name = type === "element" ? (tag.ref || tag.name) :
+      type === "component" ? item[0].name : type;
+    var newPath;
+    while (names[newPath = path + "." + name + i++]);
+    names[newPath] = true;
+
+    console.log(component.name, newPath);
+
+    var top = path ? nodes[path] : parent;
+    var node = nodes[newPath];
     if (!node) {
       // Node is new, let's create it!
-      if (typeof tree === "string") {
-        node = nodes[path] = document.createTextNode(tree);
+      if (type === "text") {
+        node = nodes[newPath] = document.createTextNode(item);
         top.appendChild(node);
         return;
       }
-      if (Array.isArray(tree)) {
-        if (!tree.length) return;
-        var first = tree[0];
-        if (typeof first === "function") {
-          var child = createComponent(first, top, instance);
-          child.update.apply(null, tree.slice(1));
-          node = nodes[path] = child;
-          return;
-        }
-        if (typeof first === "string") {
-          var tag = processTag(tree);
-          node = nodes[path] = document.createElement(tag.name);
-          setAttrs(node, tag.props);
-          applyChildren(path, tag.body);
-          top.appendChild(node);
-          return;
-        }
-        node = nodes[path] = document.createDocumentFragment();
-        applyChildren(path, tree);
+      if (type === "component") {
+        var child = createComponent(first, top, instance);
+        child.update.apply(null, item.slice(1));
+        nodes[newPath] = child;
+        return;
+      }
+      if (type === "element") {
+        node = nodes[newPath] = document.createElement(tag.name);
+        setAttrs(node, tag.props);
+        tag.body.forEach(function (child) {
+          apply(newPath, child);
+        });
         top.appendChild(node);
         return;
       }
-      console.error(tree);
-      throw new Error("Invalid type");
+      throw "This shouldn't happen";
     }
     throw "TODO: Update " + component.name + " " + path;
-  }
-
-  function applyChildren(path, array) {
-    array.forEach(function (child, i) {
-      var newPath = path ? path + "." + i : "" + i;
-      apply(newPath, child);
-    });
   }
 
   function update() {
