@@ -36,7 +36,7 @@ function createComponent(component, parent, owner) {
     Object.keys(nodes).forEach(function (key) {
       var node = nodes[key];
       if (node.destroy) node.destroy();
-      else node.parentNode.removeChild(node);
+      else node.el.parentNode.removeChild(node.el);
       delete nodes[key];
     });
     delete instance.update;
@@ -80,41 +80,57 @@ function createComponent(component, parent, owner) {
 
     var i = 0;
     var name = type === "element" ? (tag.ref || tag.name) :
-      type === "component" ? item[0].name : type;
+      type === "component" ? item.key || item[0].name : type;
     var newPath;
-    while (names[newPath = path + "." + name + i++]);
+    while (names[newPath = path + "\0" + name + i++]);
     names[newPath] = true;
 
-    console.log(component.name, newPath);
-
-    var top = path ? nodes[path] : parent;
+    var top = path ? nodes[path].el : parent;
     var node = nodes[newPath];
-    if (!node) {
-      // Node is new, let's create it!
-      if (type === "text") {
-        node = nodes[newPath] = document.createTextNode(item);
-        top.appendChild(node);
-        return;
+    if (type === "text") {
+      if (node) {
+        if (node.text !== item) {
+          node.el.nodeValue = item;
+          node.text = item;
+        }
       }
-      if (type === "component") {
-        var child = createComponent(first, top, instance);
-        child.update.apply(null, item.slice(1));
-        nodes[newPath] = child;
-        return;
+      else {
+        node = nodes[newPath] = {
+          el: document.createTextNode(item),
+          text: item
+        };
+        top.appendChild(node.el);
       }
-      if (type === "element") {
-        node = nodes[newPath] = document.createElement(tag.name);
-        if (tag.ref) refs[tag.ref] = node;
-        setAttrs(node, tag.props);
-        tag.body.forEach(function (child) {
-          apply(newPath, child);
-        });
-        top.appendChild(node);
-        return;
+    }
+    else if (type === "component") {
+      if (!node) {
+        node = createComponent(first, top, instance);
+        nodes[newPath] = node;
       }
+      node.update.apply(null, item.slice(1));
+    }
+    else if (type === "element") {
+      if (!node) {
+        tag.el = document.createElement(tag.name);
+        node = nodes[newPath] = tag;
+        if (tag.ref) refs[tag.ref] = node.el;
+        updateAttrs(node.el, {}, tag.props);
+        top.appendChild(node.el);
+      }
+      else {
+        console.log(tag.props);
+        console.log(node.props);
+        // TODO: fast update
+        updateAttrs(node.el, node.props, tag.props);
+        node.props = tag.props;
+      }
+      tag.body.forEach(function (child) {
+        apply(newPath, child);
+      });
+    }
+    else {
       throw "This shouldn't happen";
     }
-    throw "TODO: Update " + component.name + " " + path;
   }
 
   function update() {
@@ -176,13 +192,15 @@ function stripFirst(part) {
   return part.substring(1);
 }
 
-function setAttrs(node, attrs) {
-  var keys = Object.keys(attrs);
+function updateAttrs(node, old, attrs) {
+  // Update any changed attributes.
+  var keys = Object.keys(attrs), key;
   for (var i = 0, l = keys.length; i < l; i++) {
-    var key = keys[i];
+    key = keys[i];
     var value = attrs[key];
+    if (old[key] === value) continue;
     if (key === "style" && value.constructor === Object) {
-      setStyle(node.style, value);
+      updateStyle(node.style, old.style || {}, value);
     } else if (key.substr(0, 2) === "on") {
       node.addEventListener(key.substr(2), value, false);
     } else if (typeof value === "boolean") {
@@ -191,13 +209,28 @@ function setAttrs(node, attrs) {
       node.setAttribute(key, value);
     }
   }
+  // Remove attributes no longer in list
+  keys = Object.keys(old);
+  for (i = 0, l = keys.length; i < l; i++) {
+    key = keys[i];
+    if (attrs.hasOwnProperty(key)) continue;
+    node.removeAttribute(key);
+  }
 }
 
-function setStyle(style, attrs) {
-  var keys = Object.keys(attrs);
+function updateStyle(style, old, attrs) {
+  var keys = Object.keys(attrs), key;
   for (var i = 0, l = keys.length; i < l; i++) {
-    var key = keys[i];
+    key = keys[i];
+    var value = attrs[key];
+    if (old[key] === value) continue;
     style[key] = attrs[key];
+  }
+  keys = Object.keys(old);
+  for (i = 0, l = keys.length; i < l; i++) {
+    key = keys[i];
+    if (attrs.hasOwnProperty(key)) continue;
+    style[key] = "";
   }
 }
 

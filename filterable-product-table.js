@@ -69,12 +69,15 @@ function ProductTable() {
           (!product.stocked && inStockOnly)) {
         return;
       }
+      var item;
       if (product.category !== lastCategory) {
-        // TODO: key as product.category
-        rows.push([ProductCategoryRow, product.category]);
+        item = [ProductCategoryRow, product.category];
+        item.key = product.category;
+        rows.push(item);
       }
-      // TODO key as product.name
-      rows.push([ProductRow, product]);
+      item = [ProductRow, product];
+      item.key = product.name;
+      rows.push(item);
 
       lastCategory = product.category;
     });
