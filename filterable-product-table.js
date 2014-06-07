@@ -19,7 +19,8 @@ function FilterableProductTable(emit, refresh) {
     on: { userInput: onUserInput }
   };
   function render(products) {
-    return ["div",
+    return [
+      // "div",
       [SearchBar, filterText, inStockOnly],
       [ProductTable, products, filterText, inStockOnly]
     ];

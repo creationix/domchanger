@@ -19,14 +19,31 @@ function createComponent(component, parent, owner) {
   var cleanup = out.cleanup || noop;
   var instance = {
     update: update,
-    cleanup: cleanup,
+    destroy: destroy,
     handleEvent: handleEvent
   };
 
   var nodes = {};
   var names;
+  var comment = document.createComment(component.name);
+  parent.appendChild(comment);
 
   return instance;
+
+  function destroy() {
+    comment.parentNode.removeChild(comment);
+    comment = null;
+    Object.keys(nodes).forEach(function (key) {
+      var node = nodes[key];
+      if (node.destroy) node.destroy();
+      else node.parentNode.removeChild(node);
+      delete nodes[key];
+    });
+    delete instance.update;
+    delete instance.destroy;
+    delete instance.handleEvent;
+    cleanup();
+  }
 
   function refresh() {
     var tree = render.apply(null, data);
@@ -191,3 +208,7 @@ var parentNode = document.createElement('div');
 var instance = createComponent(FilterableProductTable, parentNode);
 instance.update(PRODUCTS);
 console.log(parentNode);
+setTimeout(function () {
+  instance.destroy();
+  console.log(parentNode);
+}, 3000);
