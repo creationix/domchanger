@@ -5,10 +5,10 @@ var createComponent = require('../domchanger');
 var dialog = require('ui/dialog');
 
 var tests = [
+  [require('./hello'), "Tim"],
+  [require('./timer')],
   [require('./todo-app')],
-  // [require('./hello'), "Tim"],
-  // [require('./timer')],
-  // [require('./filterable-product-table'), require('./products')]
+  [require('./filterable-product-table'), require('./products')]
 ];
 
 go();

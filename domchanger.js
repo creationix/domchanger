@@ -9,7 +9,7 @@ function createComponent(component, parent, owner) {
   var refs = {};
   var data = [];
   var roots = {};
-  console.log("new " + component.name);
+  // console.log("new " + component.name);
   var out = component(emit, refresh, refs);
   var render = out.render;
   var on = out.on || {};
@@ -37,7 +37,7 @@ function createComponent(component, parent, owner) {
   }
 
   function destroy() {
-    console.log("destroy", component.name);
+    // console.log("destroy", component.name);
     comment.parentNode.removeChild(comment);
     comment = null;
     cleanRoots(roots);
@@ -283,12 +283,10 @@ function updateAttrs(node, attrs, old) {
   });
   if (attrs) Object.keys(attrs).forEach(function (key) {
     var value = attrs[key];
-    console.log([key, value])
     if (key === "style" && value.constructor === Object) {
       updateStyle(node.style, value, old && old.style);
     }
     else if (old && (old[key] === value)) {
-      console.log("same", key);
       return;
     }
     else if (key.substr(0, 2) === "on") {
