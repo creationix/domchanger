@@ -78,7 +78,7 @@ function createComponent(component, parent, owner) {
       var item = oldTree[key];
       var newItem = newTree[key];
 
-      if (newItem.text) {
+      if (newItem.text !== undefined) {
         if (!item) {
           item = oldTree[key] = {
             text: newItem.text,
@@ -128,6 +128,7 @@ function createComponent(component, parent, owner) {
         return;
       }
 
+      console.error(newItem);
       throw new Error("This shouldn't happen");
 
     });
@@ -239,7 +240,7 @@ function nameNodes(raw) {
 // Parse and process a JSON-ML element.
 function processTag(array) {
   var props, body;
-  if (array[1].constructor === Object) {
+  if (array[1] && array[1].constructor === Object) {
     props = array[1];
     body = array.slice(2);
   }
