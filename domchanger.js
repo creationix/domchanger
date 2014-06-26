@@ -96,6 +96,16 @@ function createComponent(component, parent, owner) {
         return;
       }
 
+      if (newItem.raw) {
+        if (!item) {
+          item = oldTree[key] = {
+            el: newItem.raw
+          };
+        }
+        top.appendChild(item.el);
+        return;
+      }
+
       if (newItem.component) {
         if (!item) {
           item = oldTree[key] = createComponent(newItem.component, top, instance);
@@ -189,6 +199,9 @@ function nameNodes(raw) {
         return;
       }
     }
+    else if (item instanceof HTMLElement) {
+      type = "raw";
+    }
     else {
       console.error(item);
       throw new TypeError("Invalid item");
@@ -206,6 +219,13 @@ function nameNodes(raw) {
     if (type === "text") {
       nodes[newPath] = {
         text: item
+      };
+      return;
+    }
+
+    if (type === "raw") {
+      nodes[newPath] = {
+        raw: item
       };
       return;
     }
