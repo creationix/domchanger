@@ -96,11 +96,17 @@ function createComponent(component, parent, owner) {
         return;
       }
 
-      if (newItem.raw) {
+      if (newItem.el) {
         if (!item) {
           item = oldTree[key] = {
-            el: newItem.raw
+            el: newItem.el
           };
+        }
+        else {
+          if (item.el !== newItem.el) {
+            top.removeChild(item.el);
+            item.el = newItem.el;
+          }
         }
         top.appendChild(item.el);
         return;
@@ -200,7 +206,7 @@ function nameNodes(raw) {
       }
     }
     else if (item instanceof HTMLElement) {
-      type = "raw";
+      type = "el";
     }
     else {
       console.error(item);
@@ -223,9 +229,9 @@ function nameNodes(raw) {
       return;
     }
 
-    if (type === "raw") {
+    if (type === "el") {
       nodes[newPath] = {
-        raw: item
+        el: item
       };
       return;
     }
