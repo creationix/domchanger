@@ -116,9 +116,9 @@ function createComponent(component, parent, owner) {
       if (newItem.component) {
         if (!item) {
           item = oldTree[key] = createComponent(newItem.component, top, instance);
+          item.append();
         }
         item.update.apply(null, newItem.data);
-        item.append();
         return;
       }
 
@@ -135,10 +135,9 @@ function createComponent(component, parent, owner) {
           }
           top.appendChild(item.el);
         }
-        if (newItem.props !== item.props) {
-          updateAttrs(item.el, newItem.props, item.props);
-          item.props = newItem.props;
-        }
+        if (!item.props) item.props = {};
+        updateAttrs(item.el, newItem.props, item.props);
+
         if (newItem.children) {
           apply(item.el, newItem.children, item.children);
         }
@@ -301,44 +300,85 @@ function processTag(array) {
 }
 
 function updateAttrs(node, attrs, old) {
-  if (old) Object.keys(old).forEach(function (key) {
+
+  // Remove any attributes that were in the old version, but not in the new.
+  Object.keys(old).forEach(function (key) {
+    // Don't remove attributes still live.
     if (attrs && attrs[key]) return;
+
+    // Special case to remove event handlers
     if (key.substr(0, 2) === "on") {
-      node.removeEventListener(key.substr(2), old[key], false);
+      var eventName = key.substring(2);
+      node.removeEventListener(eventName, old[key]);
     }
+
+    // All other attributes remove normally including "style"
     else {
       node.removeAttribute(key);
     }
+
+    // Remove from virtual DOM too.
+    old[key] = null;
   });
+
+  // Add in new attributes and update existing ones.
   if (attrs) Object.keys(attrs).forEach(function (key) {
     var value = attrs[key];
-    if (key === "style" && value.constructor === Object) {
-      updateStyle(node.style, value, old && old.style);
+    var oldValue = old[key];
+
+    // Special case for object form styles
+    if (key === "style" && typeof value === "object") {
+      // Remove old version if it was in string form before.
+      if (typeof oldValue === "string") {
+        node.removeAttribute("style");
+      }
+      // Make sure the virtual DOM is in object form.
+      if (!oldValue || typeof oldValue !== "object") {
+        oldValue = old.style = {};
+      }
+      updateStyle(node.style, value, oldValue);
     }
-    else if (old && (old[key] === value)) {
-      return;
-    }
+
+    // Skip any unchanged values.
+    else if (oldValue === value) return;
+
+    // Add event listeners for attributes starting with "on"
     else if (key.substr(0, 2) === "on") {
-      node.addEventListener(key.substr(2), value, false);
+      var eventName = key.substring(2);
+      // If an event listener is updated, remove the old one.
+      if (oldValue) {
+        node.removeEventListener(eventName, oldValue);
+      }
+      // Add the new listener
+      node.addEventListener(eventName, value);
+
+      // Update the virtual dom too.
+      old[key] = value;
     }
-    else if (typeof value === "boolean") {
-      if (value) node.setAttribute(key, key);
-    }
+
+    // A normal attribute was added or updated.
     else {
-      node.setAttribute(key, value);
+      // Change in live
+      node.setAttribute(key, typeof value === "boolean" ? key : value);
+      // Record in virtual
+      old[key] = value;
     }
+
   });
+
 }
 
 function updateStyle(style, attrs, old) {
-  if (old) Object.keys(old).forEach(function (key) {
+  // Remove any old styles that aren't there anymore
+  Object.keys(old).forEach(function (key) {
     if (attrs && attrs[key]) return;
-    style[key] = "";
+    old[key] = style[key] = "";
   });
   if (attrs) Object.keys(attrs).forEach(function (key) {
     var value = attrs[key];
-    if (old && old[key] === value) return;
-    style[key] = attrs[key];
+    var oldValue = old[key];
+    if (oldValue === value) return;
+    old[key] = style[key] = attrs[key];
   });
 }
 
