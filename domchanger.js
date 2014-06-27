@@ -84,6 +84,7 @@ function createComponent(component, parent, owner) {
             text: newItem.text,
             el: document.createTextNode(newItem.text)
           };
+          top.appendChild(item.el);
         }
         else {
           if (newItem.text !== item.text) {
@@ -91,8 +92,7 @@ function createComponent(component, parent, owner) {
             item.el.nodeValue = newItem.text;
           }
         }
-        // Move to bottom or append.
-        top.appendChild(item.el);
+        // TODO: handle moves
         return;
       }
 
@@ -101,6 +101,7 @@ function createComponent(component, parent, owner) {
           item = oldTree[key] = {
             el: newItem.el
           };
+          top.appendChild(item.el);
         }
         else {
           if (item.el !== newItem.el) {
@@ -108,7 +109,7 @@ function createComponent(component, parent, owner) {
             item.el = newItem.el;
           }
         }
-        top.appendChild(item.el);
+        // TODO: handle moves
         return;
       }
 
@@ -132,6 +133,7 @@ function createComponent(component, parent, owner) {
             item.ref = newItem.ref;
             refs[item.ref] = item.el;
           }
+          top.appendChild(item.el);
         }
         if (newItem.props !== item.props) {
           updateAttrs(item.el, newItem.props, item.props);
@@ -140,7 +142,7 @@ function createComponent(component, parent, owner) {
         if (newItem.children) {
           apply(item.el, newItem.children, item.children);
         }
-        top.appendChild(item.el);
+        // TODO: handle moves
         return;
       }
 
