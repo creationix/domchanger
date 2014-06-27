@@ -1,4 +1,4 @@
-( // Module boilerplate to support component, browser globals and AMD.
+( // Module boilerplate to support commonjs, browser globals and AMD.
   (typeof module === "object" && typeof module.exports === "object" && function (m) { module.exports = m(); }) ||
   (typeof define === "function" && function (m) { define("domchanger", m); }) ||
   (function (m) { window.domChanger = m(); })
