@@ -266,13 +266,16 @@ function nameNodes(raw) {
 
 // Parse and process a JSON-ML element.
 function processTag(array) {
-  var props, body;
+  var props = {}, body;
   if (array[1] && array[1].constructor === Object) {
-    props = array[1];
+    var keys = Object.keys(array[1]);
+    for (var i = 0, l = keys.length; i < l; i++) {
+      var key = keys[i];
+      props[key] = array[1][key];
+    }
     body = array.slice(2);
   }
   else {
-    props = {};
     body = array.slice(1);
   }
   var string = array[0];
