@@ -363,7 +363,13 @@ function updateAttrs(node, attrs, old) {
     // A normal attribute was added or updated.
     else {
       // Change in live
-      node.setAttribute(key, typeof value === "boolean" ? key : value);
+      if (typeof value === "boolean") {
+        if (value) node.setAttribute(key, key);
+        else node.removeAttribute(key);
+      }
+      else {
+        node.setAttribute(key, value);
+      }
       // Record in virtual
       old[key] = value;
     }
