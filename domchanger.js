@@ -58,6 +58,7 @@ function createComponent(component, parent, owner) {
   }
 
   function refresh() {
+    if (!render) return;
     var tree = nameNodes(render.apply(null, data));
     apply(parent, tree, roots);
   }
