@@ -9,7 +9,7 @@ function createComponent(component, parent, owner) {
   var refs = {};
   var data = [];
   var roots = {};
-  // console.log("new " + component.name);
+  console.log("new " + component.name);
   var out = component(emit, refresh, refs);
   var render = out.render;
   var on = out.on || {};
@@ -37,7 +37,7 @@ function createComponent(component, parent, owner) {
   }
 
   function destroy() {
-    // console.log("destroy", component.name);
+    console.log("destroy", component.name);
     comment.parentNode.removeChild(comment);
     comment = null;
     cleanRoots(roots);
@@ -63,67 +63,58 @@ function createComponent(component, parent, owner) {
     apply(parent, tree, roots);
   }
 
+  function removeItem(item) {
+    if (item.destroy) item.destroy();
+    else item.el.parentNode.removeChild(item.el);
+  }
+
   function apply(top, newTree, oldTree) {
 
     // Delete any items that don't exist in the new tree
     Object.keys(oldTree).forEach(function (key) {
       if (!newTree[key]) {
         var item = oldTree[key];
-        if (item.destroy) item.destroy();
-        else item.el.parentNode.removeChild(item.el);
+        removeItem(item);
         delete oldTree[key];
       }
     });
 
-    Object.keys(newTree).forEach(function (key) {
+    var oldKeys = Object.keys(oldTree);
+    var newKeys = Object.keys(newTree);
+    newKeys.forEach(function (key, index) {
       var item = oldTree[key];
       var newItem = newTree[key];
+      var oldIndex = oldKeys.indexOf(key);
 
+      // Handle text nodes
       if (newItem.text !== undefined) {
-        if (!item) {
+        if (item && item.text === undefined) {
+          // If there was an existing item with different type, remove it.
+          item = removeItem(item);
+        }
+        if (item) {
+          // Update the text if it's changed.
+          if (newItem.text !== item.text) {
+            item.el.nodeValue = item.text = newItem.text;
+          }
+        }
+        else {
+          // Otherwise create a new text node.
           item = oldTree[key] = {
             text: newItem.text,
             el: document.createTextNode(newItem.text)
           };
           top.appendChild(item.el);
         }
-        else {
-          if (newItem.text !== item.text) {
-            item.text = newItem.text;
-            item.el.nodeValue = newItem.text;
-          }
-        }
-        // TODO: handle moves
-        return;
       }
 
-      if (newItem.el) {
-        if (!item) {
-          item = oldTree[key] = {
-            el: newItem.el
-          };
-          top.appendChild(item.el);
+      // Handle tag nodes
+      else if (newItem.tagName) {
+        // If thre was an old item that doesn't match type, remove it.
+        if (item && item.tagName !== newItem.tagName) {
+          item = removeItem(item);
         }
-        else {
-          if (item.el !== newItem.el) {
-            top.removeChild(item.el);
-            item.el = newItem.el;
-          }
-        }
-        // TODO: handle moves
-        return;
-      }
-
-      if (newItem.component) {
-        if (!item) {
-          item = oldTree[key] = createComponent(newItem.component, top, instance);
-          item.append();
-        }
-        item.update.apply(null, newItem.data);
-        return;
-      }
-
-      if (newItem.tagName) {
+        // Create a new item if there isn't one
         if (!item) {
           item = oldTree[key] = {
             tagName: newItem.tagName,
@@ -136,18 +127,46 @@ function createComponent(component, parent, owner) {
           }
           top.appendChild(item.el);
         }
+        // Update the tag
         if (!item.props) item.props = {};
         updateAttrs(item.el, newItem.props, item.props);
 
         if (newItem.children) {
           apply(item.el, newItem.children, item.children);
         }
-        // TODO: handle moves
-        return;
       }
 
-      console.error(newItem);
-      throw new Error("This shouldn't happen");
+      // Handle component nodes
+      else if (newItem.component) {
+        if (item && item.component !== newItem.component) {
+          item = removeItem(item);
+        }
+        if (!item) {
+          item = oldTree[key] = createComponent(newItem.component, top, instance);
+          item.append();
+        }
+        item.update.apply(null, newItem.data);
+      }
+
+
+      else if (newItem.el) {
+        if (item) {
+          item = removeItem(item);
+        }
+        item = oldTree[key] = {
+          el: newItem.el
+        };
+        top.appendChild(item.el);
+      }
+
+      else {
+        console.error(newItem);
+        throw new Error("This shouldn't happen");
+      }
+
+      if (oldIndex >= 0 && oldIndex < index) {
+        top.appendChild(oldTree[key].el);
+      }
 
     });
   }
