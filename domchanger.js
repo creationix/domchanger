@@ -9,7 +9,7 @@ function createComponent(component, parent, owner) {
   var refs = {};
   var data = [];
   var roots = {};
-  console.log("new " + component.name);
+  // console.log("new " + component.name);
   var out = component(emit, refresh, refs);
   var render = out.render;
   var on = out.on || {};
@@ -37,7 +37,7 @@ function createComponent(component, parent, owner) {
   }
 
   function destroy() {
-    console.log("destroy", component.name);
+    // console.log("destroy", component.name);
     comment.parentNode.removeChild(comment);
     comment = null;
     cleanRoots(roots);
@@ -88,10 +88,6 @@ function createComponent(component, parent, owner) {
 
       // Handle text nodes
       if (newItem.text !== undefined) {
-        if (item && item.text === undefined) {
-          // If there was an existing item with different type, remove it.
-          item = removeItem(item);
-        }
         if (item) {
           // Update the text if it's changed.
           if (newItem.text !== item.text) {
@@ -110,10 +106,6 @@ function createComponent(component, parent, owner) {
 
       // Handle tag nodes
       else if (newItem.tagName) {
-        // If thre was an old item that doesn't match type, remove it.
-        if (item && item.tagName !== newItem.tagName) {
-          item = removeItem(item);
-        }
         // Create a new item if there isn't one
         if (!item) {
           item = oldTree[key] = {
@@ -138,9 +130,6 @@ function createComponent(component, parent, owner) {
 
       // Handle component nodes
       else if (newItem.component) {
-        if (item && item.component !== newItem.component) {
-          item = removeItem(item);
-        }
         if (!item) {
           item = oldTree[key] = createComponent(newItem.component, top, instance);
           item.append();
