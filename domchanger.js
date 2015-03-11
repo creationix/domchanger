@@ -376,7 +376,12 @@ function updateAttrs(node, attrs, old) {
         else node.removeAttribute(key);
       }
       else {
-        node.setAttribute(key, value);
+        if (key === 'value' && node.nodeName === 'INPUT') {
+          // different way of updating the (actual) value for inputs
+          node.value = value;
+        } else {
+          node.setAttribute(key, value);
+        }
       }
       // Record in virtual
       old[key] = value;
