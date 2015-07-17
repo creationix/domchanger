@@ -1,3 +1,6 @@
 {
-  "main": "domchanger.js"
+  "name": "domchanger",
+  "version": "1.0.0",
+  "main": "domchanger.js",
+  "license": "MIT"
 }
