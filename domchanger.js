@@ -154,7 +154,13 @@ function createComponent(component, parent, owner) {
       }
 
       if (oldIndex >= 0 && oldIndex < index) {
-        top.appendChild(oldTree[key].el);
+        var node = oldTree[key];
+        if (node.append) {
+          node.append();
+        }
+        else {
+          top.appendChild(node.el);
+        }
       }
 
     });
