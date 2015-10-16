@@ -88,6 +88,7 @@ function createComponent(component, parent, owner) {
     var newKeys = Object.keys(newTree);
     for (var index = 0, length = newKeys.length; index < length; index++) {
       var key = newKeys[index];
+      // console.group(key);
       var item = oldTree[key];
       var newItem = newTree[key];
       var oldIndex = oldKeys.indexOf(key);
@@ -168,6 +169,7 @@ function createComponent(component, parent, owner) {
           top.appendChild(node.el);
         }
       }
+      // console.groupEnd(key);
     }
   }
 
@@ -235,11 +237,11 @@ function nameNodes(raw) {
     }
 
     // Find a unique name for this local namespace.
-    var i = 0;
-    var name = type === "element" ? (tag.ref || tag.name) :
-      type === "component" ? item.key || item[0].name : type;
-    var newPath;
-    while (nodes[newPath = name + "-" + i++]);
+    var i = 1;
+    var subType = type == "element" ? tag.name : type == "component" ? item[0].name : type;
+    var id = type === "element" ? tag.ref : type === "component" ? item.key : null;
+    var newPath = id ? subType + "-" + id : subType;
+    while (nodes[newPath]) newPath = subType + "-" + (id || "") + (++i);
 
     var node;
 
