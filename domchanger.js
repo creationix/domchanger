@@ -5,6 +5,14 @@
 )(function () {
 "use strict";
 
+function forEach(obj, fn) {
+  var keys = Object.keys(obj);
+  for (var i = 0, l = keys.length; i < l; ++i) {
+    var key = keys[i];
+    fn(key, obj[key]);
+  }
+}
+
 function createComponent(component, parent, owner) {
   var refs = {};
   var data = [];
@@ -29,8 +37,7 @@ function createComponent(component, parent, owner) {
 
   function append() {
     comment.parentNode.appendChild(comment);
-    Object.keys(roots).forEach(function (key) {
-      var node = roots[key];
+    forEach(roots, function (key, node) {
       if (node.el) parent.appendChild(node.el);
       else if (node.append) node.append();
     });
@@ -48,8 +55,7 @@ function createComponent(component, parent, owner) {
   }
 
   function cleanRoots(roots) {
-    Object.keys(roots).forEach(function (key) {
-      var node = roots[key];
+    forEach(roots, function (key, node) {
       if (node.el) node.el.parentNode.removeChild(node.el);
       else if (node.destroy) node.destroy();
       delete roots[key];
@@ -71,9 +77,8 @@ function createComponent(component, parent, owner) {
   function apply(top, newTree, oldTree) {
 
     // Delete any items that don't exist in the new tree
-    Object.keys(oldTree).forEach(function (key) {
+    forEach(oldTree, function (key, item) {
       if (!newTree[key]) {
-        var item = oldTree[key];
         removeItem(item);
         delete oldTree[key];
       }
@@ -81,13 +86,14 @@ function createComponent(component, parent, owner) {
 
     var oldKeys = Object.keys(oldTree);
     var newKeys = Object.keys(newTree);
-    newKeys.forEach(function (key, index) {
+    for (var index = 0, length = newKeys.length; index < length; index++) {
+      var key = newKeys[index];
       var item = oldTree[key];
       var newItem = newTree[key];
       var oldIndex = oldKeys.indexOf(key);
 
       // Handle text nodes
-      if (newItem.text !== undefined) {
+      if ("text" in newItem) {
         if (item) {
           // Update the text if it's changed.
           if (newItem.text !== item.text) {
@@ -162,8 +168,7 @@ function createComponent(component, parent, owner) {
           top.appendChild(node.el);
         }
       }
-
-    });
+    }
   }
 
   function update() {
@@ -340,8 +345,7 @@ function updateAttrs(node, attrs, old) {
   });
 
   // Add in new attributes and update existing ones.
-  if (attrs) Object.keys(attrs).forEach(function (key) {
-    var value = attrs[key];
+  if (attrs) forEach(attrs, function (key, value) {
     var oldValue = old[key];
 
     // Special case for object form styles
@@ -399,12 +403,11 @@ function updateAttrs(node, attrs, old) {
 
 function updateStyle(style, attrs, old) {
   // Remove any old styles that aren't there anymore
-  Object.keys(old).forEach(function (key) {
+  forEach(old, function (key) {
     if (attrs && attrs[key]) return;
     old[key] = style[key] = "";
   });
-  if (attrs) Object.keys(attrs).forEach(function (key) {
-    var value = attrs[key];
+  if (attrs) forEach(attrs, function (key, value) {
     var oldValue = old[key];
     if (oldValue === value) return;
     old[key] = style[key] = attrs[key];
