@@ -1,3 +1,29 @@
+/*
+Design of internal tree used for diffing algorithm:
+==================================================
+
+- collection of nodes is object with keys being unique name of node.
+- items can be component, text node, tag node, or raw element:
+  - text nodes contain {text, el} (el is only when instanced)
+  - tag nodes contain {tagName, el, props, children} (el is only when instaced)
+  - raw elements simply contain {el}
+  - components in the new tree contain {component, data}, but once instanced
+    contain {append, destroy, handleEvent, update} or the component instance itself.
+
+Unique Name Algorithm:
+=====================
+
+Unique names are given to each node so that we can track their movement and
+be smart about reusing nodes when changes happen.
+
+- Names are only unique to their parent node, not globally.
+- Components are named by their constructor name and optional user provided key
+- Elements are named by their tag name and optional user provided ref
+- Text nodes are simply named "text" and raw nodes are "el".
+- When a duplicate name happens, the second one gets "-2" appended, then "-3"
+  and so on.
+*/
+
 ( // Module boilerplate to support commonjs, browser globals and AMD.
   (typeof module === "object" && typeof module.exports === "object" && function (m) { module.exports = m(); }) ||
   (typeof define === "function" && function (m) { define("domchanger", m); }) ||
@@ -81,17 +107,18 @@ function createComponent(component, parent, owner) {
       if (!newTree[key]) {
         removeItem(item);
         delete oldTree[key];
+        // console.log("removed " + key)
       }
     });
 
     var oldKeys = Object.keys(oldTree);
     var newKeys = Object.keys(newTree);
-    for (var index = 0, length = newKeys.length; index < length; index++) {
-      var key = newKeys[index];
+    var index, length, key;
+    for (index = 0, length = newKeys.length; index < length; index++) {
+      key = newKeys[index];
       // console.group(key);
       var item = oldTree[key];
       var newItem = newTree[key];
-      var oldIndex = oldKeys.indexOf(key);
 
       // Handle text nodes
       if ("text" in newItem) {
@@ -99,6 +126,7 @@ function createComponent(component, parent, owner) {
           // Update the text if it's changed.
           if (newItem.text !== item.text) {
             item.el.nodeValue = item.text = newItem.text;
+            // console.log("updated")
           }
         }
         else {
@@ -108,6 +136,7 @@ function createComponent(component, parent, owner) {
             el: document.createTextNode(newItem.text)
           };
           top.appendChild(item.el);
+          // console.log("created")
         }
       }
 
@@ -125,6 +154,7 @@ function createComponent(component, parent, owner) {
             refs[item.ref] = item.el;
           }
           top.appendChild(item.el);
+          // console.log("created")
         }
         // Update the tag
         if (!item.props) item.props = {};
@@ -140,10 +170,10 @@ function createComponent(component, parent, owner) {
         if (!item) {
           item = oldTree[key] = createComponent(newItem.component, top, instance);
           item.append();
+          // console.log("created")
         }
         item.update.apply(null, newItem.data);
       }
-
 
       else if (newItem.el) {
         if (item) {
@@ -160,17 +190,32 @@ function createComponent(component, parent, owner) {
         throw new Error("This shouldn't happen");
       }
 
-      if (oldIndex >= 0 && oldIndex < index) {
-        var node = oldTree[key];
-        if (node.append) {
-          node.append();
-        }
-        else {
-          top.appendChild(node.el);
-        }
-      }
       // console.groupEnd(key);
     }
+
+    // Check to see if set needs re-ordering
+    var needOrder = false;
+    for (index = 0, length = newKeys.length; index < length; index++) {
+      key = newKeys[index];
+      var oldIndex = oldKeys.indexOf(key);
+      if (oldIndex >= 0 && oldIndex !== index) {
+        needOrder = true;
+        break;
+      }
+    }
+
+    // If it does, sort the set and virtual tree to match the new order
+    if (needOrder) {
+      forEach(newTree, function (key) {
+        var item = oldTree[key];
+        delete oldTree[key];
+        oldTree[key] = item;
+        if (item.append) item.append();
+        else top.appendChild(item.el);
+      });
+      // console.log("reordered")
+    }
+
   }
 
   function update() {
@@ -341,6 +386,7 @@ function updateAttrs(node, attrs, old) {
     else {
       node.removeAttribute(key);
     }
+    // console.log("unset " + key)
 
     // Remove from virtual DOM too.
     old[key] = null;
@@ -355,6 +401,7 @@ function updateAttrs(node, attrs, old) {
       // Remove old version if it was in string form before.
       if (typeof oldValue === "string") {
         node.removeAttribute("style");
+        // console.log("unset style")
       }
       // Make sure the virtual DOM is in object form.
       if (!oldValue || typeof oldValue !== "object") {
@@ -362,7 +409,6 @@ function updateAttrs(node, attrs, old) {
       }
       updateStyle(node.style, value, oldValue);
     }
-
     // Skip any unchanged values.
     else if (oldValue === value) return;
 
@@ -399,6 +445,8 @@ function updateAttrs(node, attrs, old) {
       old[key] = value;
     }
 
+    // console.log("set " + key)
+
   });
 
 }
@@ -408,11 +456,13 @@ function updateStyle(style, attrs, old) {
   forEach(old, function (key) {
     if (attrs && attrs[key]) return;
     old[key] = style[key] = "";
+    // console.log("unstyled " + key)
   });
   if (attrs) forEach(attrs, function (key, value) {
     var oldValue = old[key];
     if (oldValue === value) return;
     old[key] = style[key] = attrs[key];
+    // console.log("styled " + key)
   });
 }
 
