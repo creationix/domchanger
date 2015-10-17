@@ -408,12 +408,17 @@ function updateAttrs(node, attrs, old) {
         oldValue = old.style = {};
       }
       updateStyle(node.style, value, oldValue);
+      return;
     }
+
     // Skip any unchanged values.
-    else if (oldValue === value) return;
+    if (oldValue === value) return;
+
+    // Record new value in virtual tree
+    old[key] = value;
 
     // Add event listeners for attributes starting with "on"
-    else if (key.substr(0, 2) === "on") {
+    if (key.substr(0, 2) === "on") {
       var eventName = key.substring(2);
       // If an event listener is updated, remove the old one.
       if (oldValue) {
@@ -421,28 +426,25 @@ function updateAttrs(node, attrs, old) {
       }
       // Add the new listener
       node.addEventListener(eventName, value);
-
-      // Update the virtual dom too.
-      old[key] = value;
     }
-
-    // A normal attribute was added or updated.
+    else if (key === "checked" && node.nodeName === "INPUT") {
+      if (node.checked === value) return;
+      node.checked = value;
+    }
+    // different way of updating the (actual) value for inputs
+    else if (key === 'value' && node.nodeName === 'INPUT') {
+      // Make sure the value is actually different.
+      if (node.value === value) return;
+      node.value = value;
+    }
+    // Handle boolean values as valueless attributes
+    else if (typeof value === "boolean") {
+      if (value) node.setAttribute(key, key);
+      else node.removeAttribute(key);
+    }
+    // handle normal attribute
     else {
-      // Change in live
-      if (typeof value === "boolean") {
-        if (value) node.setAttribute(key, key);
-        else node.removeAttribute(key);
-      }
-      else {
-        if (key === 'value' && node.nodeName === 'INPUT') {
-          // different way of updating the (actual) value for inputs
-          node.value = value;
-        } else {
-          node.setAttribute(key, value);
-        }
-      }
-      // Record in virtual
-      old[key] = value;
+      node.setAttribute(key, value);
     }
 
     // console.log("set " + key)
