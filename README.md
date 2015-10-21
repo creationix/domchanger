@@ -1,6 +1,8 @@
 DomChanger
 ==========
 
+[![Join the chat at https://gitter.im/creationix/domchanger](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/creationix/domchanger?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 This is a small library that lets your build react.js style websites, but with
 minimal dependencies and using JSON-ML style syntax instead of JSX.
 
