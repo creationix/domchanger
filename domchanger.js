@@ -48,6 +48,7 @@ function createComponent(component, parent, owner) {
   var render = out.render;
   var on = out.on || {};
   var cleanup = out.cleanup || noop;
+  var afterRefresh = out.afterRefresh || noop;
   var instance = {
     update: update,
     destroy: destroy,
@@ -93,6 +94,7 @@ function createComponent(component, parent, owner) {
     if (!render) return;
     var tree = nameNodes(render.apply(null, data));
     apply(parent, tree, roots);
+    afterRefresh();
   }
 
   function removeItem(item) {
