@@ -43,7 +43,7 @@ function createComponent(component, parent, owner) {
   var refs = {};
   var data = [];
   var roots = {};
-  // console.log("new " + component.name);
+  // console.log("new " + (component.name || component.fnName));
   var out = component(emit, refresh, refs);
   var render = out.render;
   var on = out.on || {};
@@ -57,7 +57,7 @@ function createComponent(component, parent, owner) {
   };
 
   // Add comment for this component.
-  var comment = document.createComment(component.name);
+  var comment = document.createComment(component.name || component.fnName);
   parent.appendChild(comment);
 
   return instance;
@@ -285,7 +285,7 @@ function nameNodes(raw) {
 
     // Find a unique name for this local namespace.
     var i = 1;
-    var subType = type == "element" ? tag.name : type == "component" ? item[0].name : type;
+    var subType = type == "element" ? tag.name : type == "component" ? item[0].name || item[0].fnName : type;
     var id = type === "element" ? tag.ref : type === "component" ? item.key : null;
     var newPath = id ? subType + "-" + id : subType;
     while (nodes[newPath]) newPath = subType + "-" + (id || "") + (++i);
