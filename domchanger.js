@@ -286,7 +286,7 @@ function nameNodes(raw) {
     // Find a unique name for this local namespace.
     var i = 1;
     var subType = type == "element" ? tag.name : type == "component" ? item[0].name || item[0].fnName : type;
-    var id = type === "element" ? tag.ref : type === "component" ? item.key : null;
+    var id = type === "element" ? tag.ref : type === "component" ? item.key || item[0].key : null;
     var newPath = id ? subType + "-" + id : subType;
     while (nodes[newPath]) newPath = subType + "-" + (id || "") + (++i);
 
