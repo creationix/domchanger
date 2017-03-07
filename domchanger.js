@@ -43,6 +43,8 @@ function createComponent(component, parent, owner) {
   var refs = {};
   var data = [];
   var roots = {};
+  Object.defineProperty(roots, '__keys', { value: [], enumerable: false }); // -- added "__keys"
+  
   // console.log("new " + component.name);
   var out = component(emit, refresh, refs);
   var render = out.render;
@@ -64,7 +66,8 @@ function createComponent(component, parent, owner) {
 
   function append() {
     comment.parentNode.appendChild(comment);
-    forEach(roots, function (key, node) {
+    roots.__keys.forEach(function (key) { // --
+      var node = roots[key];
       if (node.el) parent.appendChild(node.el);
       else if (node.append) node.append();
     });
@@ -82,10 +85,12 @@ function createComponent(component, parent, owner) {
   }
 
   function cleanRoots(roots) {
-    forEach(roots, function (key, node) {
+	roots.__keys.forEach(function (key) {
+	  var node = roots[key];
       if (node.el) node.el.parentNode.removeChild(node.el);
       else if (node.destroy) node.destroy();
       delete roots[key];
+      roots.__keys = roots.__keys.filter(function(rmKey) { return rmKey !== key; }); // --
       if (node.children) cleanRoots(node.children);
     });
   }
@@ -105,16 +110,18 @@ function createComponent(component, parent, owner) {
   function apply(top, newTree, oldTree) {
 
     // Delete any items that don't exist in the new tree
-    forEach(oldTree, function (key, item) {
+	oldTree.__keys.forEach(function (key) {
+	  var item = oldTree[key];
       if (!newTree[key]) {
         removeItem(item);
         delete oldTree[key];
+        oldTree.__keys = oldTree.__keys.filter(function(rmKey) { return rmKey !== key; }); // --
         // console.log("removed " + key)
       }
     });
 
-    var oldKeys = Object.keys(oldTree);
-    var newKeys = Object.keys(newTree);
+    var oldKeys = oldTree.__keys; // --
+    var newKeys = newTree.__keys; // --
     var index, length, key;
     for (index = 0, length = newKeys.length; index < length; index++) {
       key = newKeys[index];
@@ -137,6 +144,7 @@ function createComponent(component, parent, owner) {
             text: newItem.text,
             el: document.createTextNode(newItem.text)
           };
+          oldTree.__keys.push(key) // --
           top.appendChild(item.el);
           // console.log("created")
         }
@@ -151,6 +159,8 @@ function createComponent(component, parent, owner) {
             el: document.createElement(newItem.tagName),
             children: {}
           };
+          Object.defineProperty(item.children, '__keys', { value: [], enumerable: false, writable: true }); // -- added "__keys"
+          oldTree.__keys.push(key);
           if (newItem.ref) {
             item.ref = newItem.ref;
             refs[item.ref] = item.el;
@@ -171,6 +181,7 @@ function createComponent(component, parent, owner) {
       else if (newItem.component) {
         if (!item) {
           item = oldTree[key] = createComponent(newItem.component, top, instance);
+          oldTree.__keys.push(key);
           item.append();
           // console.log("created")
         }
@@ -184,6 +195,7 @@ function createComponent(component, parent, owner) {
         item = oldTree[key] = {
           el: newItem.el
         };
+        oldTree.__keys.push(key);
         top.appendChild(item.el);
       }
 
@@ -208,10 +220,12 @@ function createComponent(component, parent, owner) {
 
     // If it does, sort the set and virtual tree to match the new order
     if (needOrder) {
-      forEach(newTree, function (key) {
+      newTree.__keys.forEach(function (key) { // --
         var item = oldTree[key];
-        delete oldTree[key];
-        oldTree[key] = item;
+        
+        oldTree.__keys = oldTree.__keys.filter(function(rmKey) { return rmKey !== key; }); // --
+        oldTree.__keys.push(key);
+        
         if (item.append) item.append();
         else top.appendChild(item.el);
       });
@@ -249,7 +263,10 @@ function nameNodes(raw) {
   return tree;
 
   function processItem(nodes, item) {
-
+	if (! nodes.hasOwnProperty('__keys')) {
+	  Object.defineProperty(nodes, '__keys', { value: [], enumerable: false, writable: true }); // -- added "__keys"
+	}
+	
     // Figure out what type of item this is and normalize data a bit.
     var type, first, tag;
     if (typeof item === "number") {
@@ -296,6 +313,7 @@ function nameNodes(raw) {
       nodes[newPath] = {
         text: item
       };
+      nodes.__keys.push(newPath);	// -- 
       return;
     }
 
@@ -303,14 +321,17 @@ function nameNodes(raw) {
       nodes[newPath] = {
         el: item
       };
+      nodes.__keys.push(newPath);	// -- 
       return;
     }
 
     if (type === "element") {
       var sub = {};
+      Object.defineProperty(sub, '__keys', { value: [], enumerable: false, writable: true }); // -- added "__keys"
       node = nodes[newPath] = {
         tagName: tag.name,
       };
+      nodes.__keys.push(newPath);	// -- 
       if (!isEmpty(tag.props)) node.props = tag.props;
       if (tag.ref) node.ref = tag.ref;
       tag.body.forEach(function (child) {
@@ -325,6 +346,7 @@ function nameNodes(raw) {
         component: item[0],
         data: item.slice(1)
       };
+      nodes.__keys.push(newPath);	// -- 
       return;
     }
 
