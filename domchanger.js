@@ -285,7 +285,6 @@ function nameNodes(raw) {
       type = "text";
     }
     else if (Array.isArray(item)) {
-      if (!item.length) return;
       first = item[0];
       if (typeof first === "function") {
         type = "component";
@@ -377,6 +376,9 @@ function processTag(array) {
   }
   else {
     body = array.slice(1);
+  }
+  if (Array.isArray(body[0]) && !body[0].length) {
+    body[0] = "";
   }
   var string = array[0];
   var name = string.match(TAG_MATCH);
